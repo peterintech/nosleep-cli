@@ -14,7 +14,7 @@ build_nosleepp() {
   goarch="$2"
   output="$3"
   echo "Building $goos/$goarch -> $output"
-  GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 GOCACHE="$GO_CACHE" go build -ldflags "-X nosleepp/cmd.version=$VERSION" -o "$BIN_DIR/$output" .
+  GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 GOCACHE="$GO_CACHE" go build -ldflags "-X github.com/peterintech/nosleepp/cmd.version=$VERSION" -o "$BIN_DIR/$output" .
 }
 
 cd "$ROOT"

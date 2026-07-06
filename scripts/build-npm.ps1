@@ -24,7 +24,7 @@ function Build-nosleepp {
     $env:GOARCH = $Goarch
     $env:CGO_ENABLED = "0"
     $env:GOCACHE = $cacheDir
-    go build -ldflags "-X nosleepp/cmd.version=$Version" -o (Join-Path $binDir $Output) .
+    go build -ldflags "-X github.com/peterintech/nosleepp/cmd.version=$Version" -o (Join-Path $binDir $Output) .
     if ($LASTEXITCODE -ne 0) {
         throw "go build failed for $Goos/$Goarch"
     }
