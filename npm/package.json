@@ -1,6 +1,6 @@
 {
   "name": "nosleepp",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Keep your PC awake while AI agents are working",
   "preferGlobal": true,
   "bin": {
@@ -10,6 +10,8 @@
     "README.md",
     "index.js",
     "lib/resolve-binary.js",
+    "lib/ensure-executable.js",
+    "lib/postinstall.js",
     "bin/nosleepp-win32-x64.exe",
     "bin/nosleepp-darwin-arm64",
     "bin/nosleepp-darwin-x64"
@@ -24,7 +26,8 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "postinstall": "node ./lib/postinstall.js"
   },
   "engines": {
     "node": ">=18"

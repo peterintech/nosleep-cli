@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-VERSION="${1:-0.2.0}"
+VERSION="${1:-0.2.4}"
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 BIN_DIR="$ROOT/npm/bin"
 GO_CACHE="$ROOT/.gocache"
@@ -15,6 +15,9 @@ build_nosleepp() {
   output="$3"
   echo "Building $goos/$goarch -> $output"
   GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 GOCACHE="$GO_CACHE" go build -ldflags "-X github.com/peterintech/nosleepp/cmd.version=$VERSION" -o "$BIN_DIR/$output" .
+  if [ "$goos" = "darwin" ]; then
+    chmod 755 "$BIN_DIR/$output"
+  fi
 }
 
 cd "$ROOT"
