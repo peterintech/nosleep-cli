@@ -28,6 +28,31 @@ test("repairs a non-executable macOS binary", () => {
   assert.equal(accessCalls, 2);
 });
 
+test("repairs a non-executable Linux binary", () => {
+  let accessCalls = 0;
+  let chmodCall;
+  const fileSystem = {
+    constants: { X_OK: 1 },
+    accessSync: () => {
+      accessCalls += 1;
+      if (accessCalls === 1) {
+        const error = new Error("permission denied");
+        error.code = "EACCES";
+        throw error;
+      }
+    },
+    chmodSync: (filePath, mode) => {
+      chmodCall = { filePath, mode };
+    }
+  };
+
+  const result = ensureExecutable("/tmp/nosleepp", "linux", fileSystem);
+
+  assert.deepEqual(result, { ok: true, changed: true });
+  assert.deepEqual(chmodCall, { filePath: "/tmp/nosleepp", mode: 0o755 });
+  assert.equal(accessCalls, 2);
+});
+
 test("skips permission changes on Windows", () => {
   let touched = false;
   const fileSystem = {

@@ -35,6 +35,8 @@ try {
     Build-nosleepp -Goos "windows" -Goarch "amd64" -Output "nosleepp-win32-x64.exe"
     Build-nosleepp -Goos "darwin" -Goarch "arm64" -Output "nosleepp-darwin-arm64"
     Build-nosleepp -Goos "darwin" -Goarch "amd64" -Output "nosleepp-darwin-x64"
+    Build-nosleepp -Goos "linux" -Goarch "amd64" -Output "nosleepp-linux-x64"
+    Build-nosleepp -Goos "linux" -Goarch "arm64" -Output "nosleepp-linux-arm64"
 }
 finally {
     Pop-Location

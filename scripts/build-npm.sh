@@ -15,14 +15,15 @@ build_nosleepp() {
   output="$3"
   echo "Building $goos/$goarch -> $output"
   GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 GOCACHE="$GO_CACHE" go build -ldflags "-X github.com/peterintech/nosleepp/cmd.version=$VERSION" -o "$BIN_DIR/$output" .
-  if [ "$goos" = "darwin" ]; then
+  if [ "$goos" = "darwin" ] || [ "$goos" = "linux" ]; then
     chmod 755 "$BIN_DIR/$output"
-  fi
 }
 
 cd "$ROOT"
 build_nosleepp windows amd64 nosleepp-win32-x64.exe
 build_nosleepp darwin arm64 nosleepp-darwin-arm64
 build_nosleepp darwin amd64 nosleepp-darwin-x64
+build_nosleepp linux amd64 nosleepp-linux-x64
+build_nosleepp linux arm64 nosleepp-linux-arm64
 
 echo "Built npm binaries in $BIN_DIR"

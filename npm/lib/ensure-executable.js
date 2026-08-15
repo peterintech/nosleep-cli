@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 
 function ensureExecutable(binaryPath, platform = process.platform, fileSystem = fs) {
-  if (platform !== "darwin") {
+  if (platform !== "darwin" && platform !== "linux") {
     return { ok: true, changed: false };
   }
 
@@ -18,7 +18,7 @@ function ensureExecutable(binaryPath, platform = process.platform, fileSystem = 
         ok: false,
         error: [
           `Unable to execute nosleepp binary: ${binaryPath}`,
-          `macOS returned ${repairError.code || accessError.code || "a permission error"}.`,
+          `${platform} returned ${repairError.code || accessError.code || "a permission error"}.`,
           `Try running: chmod +x "${binaryPath}"`
         ].join(" ")
       };

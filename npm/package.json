@@ -1,6 +1,6 @@
 {
   "name": "nosleepp",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Keep your PC awake while AI agents are working",
   "preferGlobal": true,
   "bin": {
@@ -14,7 +14,9 @@
     "lib/postinstall.js",
     "bin/nosleepp-win32-x64.exe",
     "bin/nosleepp-darwin-arm64",
-    "bin/nosleepp-darwin-x64"
+    "bin/nosleepp-darwin-x64",
+    "bin/nosleepp-linux-x64",
+    "bin/nosleepp-linux-arm64"
   ],
   "keywords": [
     "nosleepp",
@@ -22,7 +24,8 @@
     "cli",
     "caffeinate",
     "windows",
-    "macos"
+    "macos",
+    "linux"
   ],
   "license": "MIT",
   "scripts": {

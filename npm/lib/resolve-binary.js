@@ -4,7 +4,9 @@ const path = require("node:path");
 const supportedTargets = {
   "win32-x64": "nosleepp-win32-x64.exe",
   "darwin-arm64": "nosleepp-darwin-arm64",
-  "darwin-x64": "nosleepp-darwin-x64"
+  "darwin-x64": "nosleepp-darwin-x64",
+  "linux-x64": "nosleepp-linux-x64",
+  "linux-arm64": "nosleepp-linux-arm64"
 };
 
 function resolveBinary(platform, arch, rootDir) {

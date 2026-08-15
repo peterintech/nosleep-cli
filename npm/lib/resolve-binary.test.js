@@ -18,12 +18,24 @@ test("resolves supported binaries", () => {
 });
 
 test("rejects unsupported platforms", () => {
-  const result = resolveBinary("linux", "x64", __dirname);
+  const result = resolveBinary("freebsd", "x64", __dirname);
 
   assert.equal(result.ok, false);
-  assert.match(result.error, /Unsupported platform: linux-x64/);
+  assert.match(result.error, /Unsupported platform: freebsd-x64/);
   assert.match(result.error, /win32-x64/);
   assert.match(result.error, /darwin-arm64/);
+  assert.match(result.error, /linux-x64/);
+});
+
+test("resolves Linux binaries", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "nosleepp-"));
+  fs.mkdirSync(path.join(tmp, "bin"));
+  fs.writeFileSync(path.join(tmp, "bin", supportedTargets["linux-x64"]), "");
+
+  const result = resolveBinary("linux", "x64", tmp);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.path, path.join(tmp, "bin", "nosleepp-linux-x64"));
 });
 
 test("reports missing binary for supported platform", () => {
