@@ -85,3 +85,51 @@ func TestWatchOnceNoAgentsExitCode(t *testing.T) {
 		t.Fatalf("expected exit code 1, got %d", exitErr.Code)
 	}
 }
+
+func TestPowerTestAcquiresAndReleases(t *testing.T) {
+	var out bytes.Buffer
+	power := &commandFakePower{}
+	opts := &options{output: &out, errorOutput: &bytes.Buffer{}}
+	opts.powerManager = power
+	root := newRootCommand(opts)
+	root.SetArgs([]string{"power-test", "--duration", "10ms"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if power.acquires != 1 {
+		t.Fatalf("expected one acquire, got %d", power.acquires)
+	}
+	if power.releases != 1 {
+		t.Fatalf("expected one release, got %d", power.releases)
+	}
+	if !strings.Contains(out.String(), "No-sleep lock acquired for 10ms") {
+		t.Fatalf("expected lock-acquired message, got %s", out.String())
+	}
+	if !strings.Contains(out.String(), "No-sleep lock released") {
+		t.Fatalf("expected lock-released message, got %s", out.String())
+	}
+}
+
+func TestPowerTestRejectsNonPositiveDuration(t *testing.T) {
+	for _, duration := range []string{"0s", "-5s"} {
+		var out bytes.Buffer
+		power := &commandFakePower{}
+		opts := &options{output: &out, errorOutput: &bytes.Buffer{}}
+		opts.powerManager = power
+		root := newRootCommand(opts)
+		root.SetArgs([]string{"power-test", "--duration=" + duration})
+
+		err := root.Execute()
+		var exitErr ExitError
+		if !errors.As(err, &exitErr) {
+			t.Fatalf("expected ExitError for duration %q, got %v", duration, err)
+		}
+		if exitErr.Code != 2 {
+			t.Fatalf("expected exit code 2 for duration %q, got %d", duration, exitErr.Code)
+		}
+		if power.acquires != 0 || power.releases != 0 {
+			t.Fatalf("duration %q should not touch power state, got acquire=%d release=%d", duration, power.acquires, power.releases)
+		}
+	}
+}

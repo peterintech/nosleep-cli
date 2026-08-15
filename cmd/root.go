@@ -20,6 +20,8 @@ import (
 	"github.com/peterintech/nosleepp/internal/power"
 
 	"github.com/peterintech/nosleepp/internal/agent"
+
+	"github.com/peterintech/nosleepp/internal/defaults"
 )
 
 var (
@@ -65,10 +67,10 @@ func Execute() error {
 
 func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 	opts := &options{
-		interval:     10 * time.Second,
-		sample:       2 * time.Second,
-		cpuThreshold: 250 * time.Millisecond,
-		quiet:        30 * time.Second,
+		interval:     defaults.Interval,
+		sample:       defaults.Sample,
+		cpuThreshold: defaults.CPUThreshold(),
+		quiet:        defaults.Quiet,
 		output:       stdout,
 		errorOutput:  stderr,
 	}
@@ -77,7 +79,7 @@ func NewRootCommand(stdout, stderr io.Writer) *cobra.Command {
 
 func newRootCommand(opts *options) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "github.com/peterintech/nosleepp",
+		Use:           "nosleepp",
 		Short:         "Keep your PC awake while AI agents are working",
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -88,6 +90,7 @@ func newRootCommand(opts *options) *cobra.Command {
 
 	root.AddCommand(newListCommand(opts))
 	root.AddCommand(newWatchCommand(opts))
+	root.AddCommand(newPowerTestCommand(opts))
 	root.AddCommand(newVersionCommand(opts.output))
 
 	return root
@@ -106,6 +109,10 @@ func newListCommand(opts *options) *cobra.Command {
 			scanner := opts.processScan
 			if scanner == nil {
 				scanner = process.NewScanner()
+			}
+
+			if !opts.jsonOutput {
+				fmt.Fprintf(opts.output, "Checking agents for activity over %s...\n", opts.sample)
 			}
 
 			before, err := scanner.Scan(cmd.Context())
@@ -131,8 +138,8 @@ func newListCommand(opts *options) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&opts.jsonOutput, "json", false, "print machine-readable JSON")
-	cmd.Flags().DurationVar(&opts.sample, "sample", 2*time.Second, "activity sample window")
-	cmd.Flags().DurationVar(&opts.cpuThreshold, "cpu-threshold", 250*time.Millisecond, "minimum CPU delta for working status")
+	cmd.Flags().DurationVar(&opts.sample, "sample", defaults.Sample, "activity sample window")
+	cmd.Flags().DurationVar(&opts.cpuThreshold, "cpu-threshold", defaults.CPUThreshold(), "minimum CPU delta for working status")
 	cmd.Flags().BoolVar(&opts.includeAll, "all", false, "include idle matching agent processes")
 	return cmd
 }
@@ -157,12 +164,21 @@ func newWatchCommand(opts *options) *cobra.Command {
 				powerManager = power.NewManager()
 			}
 
+			firstCheck := true
 			watcher := watch.NewWatcher(scanner, powerManager, profiles, watch.Options{
 				Interval:     opts.interval,
 				Sample:       opts.sample,
 				CPUThreshold: opts.cpuThreshold,
 				Quiet:        opts.quiet,
 				Once:         opts.once,
+				OnCheck: func(sample time.Duration) {
+					if firstCheck {
+						firstCheck = false
+						if !opts.jsonOutput {
+							fmt.Fprintln(opts.output, "Checking agents for activity...")
+						}
+					}
+				},
 				OnChange: func(matches []agent.Match, state watch.State) {
 					switch state {
 					case watch.StateWorking:
@@ -177,6 +193,9 @@ func newWatchCommand(opts *options) *cobra.Command {
 			})
 
 			err = watcher.Run(cmd.Context())
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 			if errors.Is(err, watch.ErrNoAgents) {
 				if opts.once {
 					return ExitError{Code: 1, Message: "no working agents found"}
@@ -190,12 +209,51 @@ func newWatchCommand(opts *options) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().DurationVar(&opts.interval, "interval", 10*time.Second, "polling interval")
-	cmd.Flags().DurationVar(&opts.sample, "sample", 2*time.Second, "activity sample window")
-	cmd.Flags().DurationVar(&opts.cpuThreshold, "cpu-threshold", 250*time.Millisecond, "minimum CPU delta for working status")
-	cmd.Flags().DurationVar(&opts.quiet, "quiet", 30*time.Second, "quiet grace period before releasing sleep prevention")
+	cmd.Flags().DurationVar(&opts.interval, "interval", defaults.Interval, "polling interval")
+	cmd.Flags().DurationVar(&opts.sample, "sample", defaults.Sample, "activity sample window")
+	cmd.Flags().DurationVar(&opts.cpuThreshold, "cpu-threshold", defaults.CPUThreshold(), "minimum CPU delta for working status")
+	cmd.Flags().DurationVar(&opts.quiet, "quiet", defaults.Quiet, "quiet grace period before releasing sleep prevention")
 	cmd.Flags().BoolVar(&opts.once, "once", false, "check once and exit")
 	cmd.Flags().BoolVar(&opts.jsonOutput, "json", false, "print machine-readable JSON")
+	return cmd
+}
+
+func newPowerTestCommand(opts *options) *cobra.Command {
+	var duration time.Duration
+	cmd := &cobra.Command{
+		Use:   "power-test",
+		Short: "Hold the no-sleep lock for a fixed duration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			powerManager := opts.powerManager
+			if powerManager == nil {
+				powerManager = power.NewManager()
+			}
+
+			if duration <= 0 {
+				return ExitError{Code: 2, Message: "--duration must be greater than 0"}
+			}
+
+			if err := powerManager.Acquire(); err != nil {
+				return ExitError{Code: 3, Message: err.Error()}
+			}
+			fmt.Fprintf(opts.output, "No-sleep lock acquired for %s. Do not close this terminal during the test.\n", duration)
+			defer func() {
+				if err := powerManager.Release(); err != nil {
+					fmt.Fprintf(opts.errorOutput, "Failed to release no-sleep lock: %v\n", err)
+				} else {
+					fmt.Fprintln(opts.output, "No-sleep lock released.")
+				}
+			}()
+
+			err := sleepContext(cmd.Context(), duration)
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
+		},
+	}
+
+	cmd.Flags().DurationVar(&duration, "duration", defaults.PowerTestDuration, "how long to hold the no-sleep lock")
 	return cmd
 }
 
