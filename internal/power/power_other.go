@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows && !darwin && !linux
 
 package power
 
@@ -11,7 +11,7 @@ func NewManager() Manager {
 }
 
 func (unsupportedManager) Acquire() error {
-	return errors.New("power management is only supported on Windows and macOS")
+	return errors.New("power management is only supported on Windows, macOS, and Linux")
 }
 
 func (unsupportedManager) Release() error {

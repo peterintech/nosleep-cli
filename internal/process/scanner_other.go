@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows && !darwin && !linux
 
 package process
 
@@ -16,5 +16,5 @@ func NewScanner() Scanner {
 }
 
 func (unsupportedScanner) Scan(ctx context.Context) ([]agent.Process, error) {
-	return nil, errors.New("process scanning is only supported on Windows and macOS")
+	return nil, errors.New("process scanning is only supported on Windows, macOS, and Linux")
 }

@@ -3,10 +3,12 @@ package watch
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/peterintech/nosleepp/internal/agent"
+	"github.com/peterintech/nosleepp/internal/defaults"
 )
 
 type fakeScanner struct {
@@ -41,6 +43,24 @@ func (p *fakePower) Acquire() error {
 func (p *fakePower) Release() error {
 	p.releases++
 	return p.err
+}
+
+func TestDefaultCPUThreshold(t *testing.T) {
+	got := defaults.CPUThreshold()
+	want := 250 * time.Millisecond
+	if runtime.GOOS == "linux" {
+		want = 10 * time.Millisecond
+	}
+	if got != want {
+		t.Fatalf("defaults.CPUThreshold() = %s, want %s on %s", got, want, runtime.GOOS)
+	}
+}
+
+func TestNewWatcherAppliesDefaultCPUThreshold(t *testing.T) {
+	watcher := NewWatcher(&fakeScanner{}, &fakePower{}, agent.DefaultProfiles(), Options{})
+	if watcher.options.CPUThreshold != defaults.CPUThreshold() {
+		t.Fatalf("expected default CPU threshold %s, got %s", defaults.CPUThreshold(), watcher.options.CPUThreshold)
+	}
 }
 
 func TestWatcherAcquireOnceAndReleaseWhenAgentsFinish(t *testing.T) {

@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/peterintech/nosleepp/internal/defaults"
 )
 
 type Process struct {
@@ -89,7 +91,7 @@ type ActivityOptions struct {
 
 func DetectActivity(profiles []Profile, before []Process, after []Process, options ActivityOptions) []Match {
 	if options.CPUThreshold <= 0 {
-		options.CPUThreshold = 250 * time.Millisecond
+		options.CPUThreshold = defaults.CPUThreshold()
 	}
 
 	signatures := compileSignatures(profiles)

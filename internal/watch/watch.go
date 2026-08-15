@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/peterintech/nosleepp/internal/agent"
+	"github.com/peterintech/nosleepp/internal/defaults"
 )
 
 var ErrNoAgents = errors.New("no running agents found")
@@ -26,6 +27,7 @@ type Options struct {
 	CPUThreshold time.Duration
 	Quiet        time.Duration
 	Once         bool
+	OnCheck      func(sample time.Duration)
 	OnChange     func(matches []agent.Match, state State)
 }
 
@@ -46,16 +48,16 @@ type Watcher struct {
 
 func NewWatcher(scanner ProcessScanner, powerManager PowerManager, profiles []agent.Profile, options Options) Watcher {
 	if options.Interval <= 0 {
-		options.Interval = 10 * time.Second
+		options.Interval = defaults.Interval
 	}
 	if options.Sample <= 0 {
-		options.Sample = 2 * time.Second
+		options.Sample = defaults.Sample
 	}
 	if options.CPUThreshold <= 0 {
-		options.CPUThreshold = 250 * time.Millisecond
+		options.CPUThreshold = defaults.CPUThreshold()
 	}
 	if options.Quiet <= 0 {
-		options.Quiet = 30 * time.Second
+		options.Quiet = defaults.Quiet
 	}
 	return Watcher{
 		scanner:  scanner,
@@ -126,6 +128,10 @@ func (w Watcher) Run(ctx context.Context) (runErr error) {
 }
 
 func (w Watcher) sampleActivity(ctx context.Context, includeIdle bool) ([]agent.Match, error) {
+	if w.options.OnCheck != nil {
+		w.options.OnCheck(w.options.Sample)
+	}
+
 	before, err := w.scanner.Scan(ctx)
 	if err != nil {
 		return nil, err
