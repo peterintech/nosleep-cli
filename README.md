@@ -6,12 +6,13 @@ It is built for agent tools such as Codex, Claude Code, OpenCode, Antigravity, a
 
 ## Supported Platforms
 
-| Platform            | Status              | Sleep prevention                 |
-| ------------------- | ------------------- | -------------------------------- |
-| Windows x64         | Supported           | Native `SetThreadExecutionState` |
-| macOS Apple Silicon | Supported           | Built-in `caffeinate -i`         |
-| macOS Intel         | Supported           | Built-in `caffeinate -i`         |
-| Linux               | Not supported in v2 | Planned for a later version      |
+| Platform            | Status    | Sleep prevention                 |
+| ------------------- | --------- | -------------------------------- |
+| Windows x64         | Supported | Native `SetThreadExecutionState` |
+| macOS Apple Silicon | Supported(still testing) | Built-in `caffeinate -i`         |
+| macOS Intel         | Supported(still testing) | Built-in `caffeinate -i`         |
+| Linux x64           | Supported | `systemd-inhibit`                |
+| Linux arm64         | Supported | `systemd-inhibit`                |
 
 `nosleepp` prevents system idle sleep. It does not force the display to stay awake.
 
@@ -75,11 +76,11 @@ nosleepp watch --once
 
 ## How Working Detection Works
 
-`nosleepp` takes two process snapshots separated by a sample window. The default sample window is `2s`.
+`nosleepp` takes two process snapshots separated by a sample window. The default sample window is `5s`.
 
 An agent is marked `working` when either:
 
-- the agent process or one of its descendant processes gains at least `250ms` of CPU time during the sample window, or
+- the agent process or one of its descendant processes gains enough CPU time during the sample window (`250ms` on Windows/macOS, `10ms` on Linux), or
 - a descendant process appears or disappears during the sample window.
 
 An agent is marked `idle` when the process is open but no meaningful activity is detected.
@@ -115,7 +116,7 @@ nosleepp list --sample 5s --cpu-threshold 100ms
 
 Default behavior:
 
-- samples activity for `2s`
+- samples activity for `5s`
 - prints only `working` agents
 - prints `No working agents found.` if matching agent apps are open but idle
 - does not change power state
@@ -138,20 +139,30 @@ Watches for working agents and prevents system idle sleep while work is active.
 
 ```bash
 nosleepp watch
-nosleepp watch --interval 5s --quiet 1m
+nosleepp watch --interval 5s --quiet 3m
 nosleepp watch --once
 ```
 
 Default behavior:
 
-- samples activity for `2s`
+- samples activity for `5s`
 - polls every `10s`
 - prevents system idle sleep when working agents are found
-- keeps the computer awake for `30s` after activity stops
+- keeps the computer awake for `3m` after activity stops
 - releases the no-sleep lock and exits after the quiet window
 - restores normal sleep behavior on `Ctrl+C`
 
 `--once` checks once and exits. Useful for scripts. Exits `0` when at least one working agent is found, `1` when none are found.
+
+### `nosleepp power-test`
+
+Holds the no-sleep lock directly, independent of agent detection. Use it to verify that OS sleep prevention works on your platform.
+
+```bash
+nosleepp power-test --duration 2m
+```
+
+`power-test` acquires the no-sleep lock, prints a message, and holds the lock until the duration elapses or `Ctrl+C` is pressed. Exits `0` on success, `2` if `--duration` is not greater than zero, `3` if the lock could not be acquired.
 
 ### `nosleepp version`
 
@@ -166,23 +177,23 @@ Prints version/build information.
 
 ### `list` Flags
 
-| Flag              | Default | Description                                                                 |
-| ----------------- | ------- | --------------------------------------------------------------------------- |
-| `--all`           | off     | Show idle/open matching agents as well as working agents                    |
-| `--json`          | off     | Print machine-readable JSON                                                 |
-| `--sample`        | `2s`    | How long to wait between snapshots. Longer reduces false negatives.         |
-| `--cpu-threshold` | `250ms` | CPU activity required to mark an agent as working. Lower is more sensitive. |
+| Flag              | Default | Description                                                                                              |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `--all`           | off     | Show idle/open matching agents as well as working agents                                                 |
+| `--json`          | off     | Print machine-readable JSON                                                                              |
+| `--sample`        | `5s`    | How long to wait between snapshots. Longer reduces false negatives.                                      |
+| `--cpu-threshold` | `250ms` | CPU activity required to mark an agent as working. Lower is more sensitive. Defaults to `10ms` on Linux. |
 
 ### `watch` Flags
 
-| Flag              | Default | Description                                                  |
-| ----------------- | ------- | ------------------------------------------------------------ |
-| `--interval`      | `10s`   | How often to check for activity                              |
-| `--sample`        | `2s`    | Activity sample window used on each poll                     |
-| `--cpu-threshold` | `250ms` | CPU activity required during the sample window               |
-| `--quiet`         | `30s`   | How long to stay awake after the last detected activity      |
-| `--once`          | off     | Check once and exit (`0` if working agent found, `1` if not) |
-| `--json`          | off     | Print match details as JSON when state changes               |
+| Flag              | Default | Description                                                                  |
+| ----------------- | ------- | ---------------------------------------------------------------------------- |
+| `--interval`      | `10s`   | How often to check for activity                                              |
+| `--sample`        | `5s`    | Activity sample window used on each poll                                     |
+| `--cpu-threshold` | `250ms` | CPU activity required during the sample window (defaults to `10ms` on Linux) |
+| `--quiet`         | `3m`    | How long to stay awake after the last detected activity                      |
+| `--once`          | off     | Check once and exit (`0` if working agent found, `1` if not)                 |
+| `--json`          | off     | Print match details as JSON when state changes                               |
 
 ## Exit Codes
 
@@ -222,7 +233,7 @@ This shows matching agents even when idle. If your agent does not appear here, a
 ### Make Detection More Sensitive
 
 ```bash
-nosleepp watch --cpu-threshold 100ms --sample 3s
+nosleepp watch --cpu-threshold 100ms --sample 8s
 ```
 
 This catches lighter activity, at the cost of more possible false positives.
@@ -235,9 +246,21 @@ nosleepp watch --cpu-threshold 1s
 
 This reduces idle false positives, but may miss lightweight agent tasks.
 
+### Test Sleep Prevention Directly
+
+```bash
+nosleepp power-test --duration 2m
+```
+
+Use this when you want to verify the platform power lock without depending on agent detection. If `power-test` cannot keep the machine awake, the issue is in OS-level sleep prevention rather than process matching.
+
+### WSL Note
+
+If you run the Linux binary inside WSL on a Windows PC, `systemd-inhibit` only applies inside the WSL/Linux environment. It should not be treated as proof that Windows host sleep is blocked. For Windows host sleep prevention, run the Windows `nosleepp` binary from PowerShell or Command Prompt.
+
 ## Limitations
 
-- Linux support is out of scope for v2.
+- Linux sleep prevention requires `systemd-inhibit`, which is available on many systemd-based desktop distributions. `nosleepp` uses `--what=idle:sleep` so it blocks idle sleep and system sleep requests while the lock is held. Manual suspend behavior can still depend on the desktop environment and system policy.
 - Activity detection is based on CPU and descendant-process changes.
 - If an agent is waiting on a network response without CPU or child-process activity, it may look idle after the quiet window.
 - `--config` is reserved for future use and is not implemented yet.
@@ -269,11 +292,13 @@ Build the local platform binary:
 go build .
 ```
 
-Cross-compile macOS from Windows:
+Cross-compile macOS and Linux from Windows:
 
 ```powershell
 $env:GOOS="darwin"; $env:GOARCH="arm64"; go build ./...
 $env:GOOS="darwin"; $env:GOARCH="amd64"; go build ./...
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build ./...
+$env:GOOS="linux"; $env:GOARCH="arm64"; go build ./...
 Remove-Item Env:\GOOS, Env:\GOARCH
 ```
 

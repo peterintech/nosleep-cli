@@ -48,18 +48,19 @@ nosleepp watch --once
 
 ## Supported Platforms
 
-| Platform            | Status            |
-| ------------------- | ----------------- |
-| Windows x64         | Supported         |
-| macOS Apple Silicon | Supported         |
-| macOS Intel         | Supported         |
-| Linux               | Not supported yet |
+| Platform            | Status    |
+| ------------------- | --------- |
+| Windows x64         | Supported |
+| macOS Apple Silicon | Supported(testing) |
+| macOS Intel         | Supported(testing) |
+| Linux x64           | Supported |
+| Linux arm64         | Supported |
 
 `nosleepp` prevents system idle sleep. It does not force your display to stay awake.
 
 ## How It Detects Work
 
-`nosleepp` samples running processes for 2 seconds by default.
+`nosleepp` samples running processes for 5 seconds by default.
 
 An agent is marked `working` when either:
 
@@ -67,6 +68,8 @@ An agent is marked `working` when either:
 - a descendant process appears or disappears during the sample window.
 
 If an agent app is open but idle, `nosleepp list` hides it by default. Use `nosleepp list --all` to show idle matches too.
+
+On Linux, sleep prevention uses `systemd-inhibit --what=idle:sleep`, which is available on many systemd-based desktop distributions. Inside WSL, this does not reliably block the Windows host from sleeping; run the Windows binary when you need to keep Windows awake.
 
 ## Useful Commands
 
@@ -76,7 +79,8 @@ nosleepp list --json
 nosleepp list --all
 nosleepp watch
 nosleepp watch --interval 5s
-nosleepp watch --quiet 1m
+nosleepp watch --quiet 3m
+nosleepp power-test --duration 2m   // to test if it keeps your pc awake (without agents running)
 nosleepp version
 ```
 
