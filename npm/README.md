@@ -80,7 +80,7 @@ nosleepp list --all
 nosleepp watch
 nosleepp watch --interval 5s
 nosleepp watch --quiet 3m
-nosleepp power-test --duration 2m   // to test if it keeps your pc awake (without agents running)
+nosleepp power-test --duration 2m   # to test if it keeps your PC awake (without agents running)
 nosleepp version
 ```
 
