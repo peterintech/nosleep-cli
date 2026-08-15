@@ -17,6 +17,7 @@ build_nosleepp() {
   GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 GOCACHE="$GO_CACHE" go build -ldflags "-X github.com/peterintech/nosleepp/cmd.version=$VERSION" -o "$BIN_DIR/$output" .
   if [ "$goos" = "darwin" ] || [ "$goos" = "linux" ]; then
     chmod 755 "$BIN_DIR/$output"
+  fi
 }
 
 cd "$ROOT"
